@@ -1,6 +1,9 @@
 from langchain_core.embeddings import Embeddings
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from numpy import ndarray
 from sentence_transformers import SentenceTransformer
+
+from utils.env_utils import ALIBABA_API_KEY, ALIBABA_BASE_URL, VLLM_SERVER_URL
 
 
 class CustomQwen3Embeddings(Embeddings):
@@ -14,3 +17,17 @@ class CustomQwen3Embeddings(Embeddings):
 
     def embed_documents(self, texts: list[str]) -> ndarray:
         return self.qwen3_embedding.encode(texts)
+
+
+mvltiModel_llm = ChatOpenAI(# 多模态大模型
+    model='qwen-32b',
+    api_key="213",
+    base_url=VLLM_SERVER_URL,
+)
+
+embedding = OpenAIEmbeddings(
+    api_key=ALIBABA_API_KEY,
+    base_url=ALIBABA_BASE_URL,
+    model="text-embedding-v4",
+    check_embedding_ctx_length=False#关键参数
+)

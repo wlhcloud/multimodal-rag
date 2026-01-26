@@ -9,9 +9,9 @@ from utils.common_utils import (
 from utils.log_utils import log
 
 # md存储的临时模型
-base_md_dir = r"/mnt/d/ProdProject/Python/ModelTuneAi/Multimodal_RAG/output"
-OCR_IP = "www.wlhcloud.top"
-OCR_PORT = 9114
+base_md_dir = r"./output"
+OCR_IP = "127.0.0.1"
+OCR_PORT = 6007
 
 
 class ProcessorAPP:
@@ -55,6 +55,7 @@ class ProcessorAPP:
             log.info(f"MD files directory created: {md_files_dir}")
             # 要先排序
             self.md_files = get_sorted_md_files(self.md_dir)
+            self.md_files = [f for f in self.md_files if "nohf" in f]
             log.info(f"PDF已解析，生成的MD文件列表：{self.md_files}")
 
             self.file_contents = {}

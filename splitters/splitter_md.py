@@ -5,10 +5,12 @@ import os
 import re
 from PIL import Image
 from langchain_text_splitters import MarkdownHeaderTextSplitter
+
+from milvus_db.db_operator import do_save_to_milvus
 from my_llm import CustomQwen3Embeddings
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_core.documents import Document
-from typing import List
+from typing import List,Dict
 from utils.log_utils import log
 from utils.common_utils import get_sorted_md_files
 
@@ -79,7 +81,7 @@ class MarkdownDirSplitter:
         """
         self.images_output_dir = images_output_dir
         self.text_chunk_size = text_chunk_size
-        self.embedding_path = "/mnt/d/ProdProject/AI/models/Qwen/Qwen3-Embedding-0___6B"
+        self.embedding_path = "/home/gybwg/ai-project/models/Qwen/Qwen3-Embedding-0___6B"
 
         self.headers_to_split_on = [
             ("#", "Header 1"),
@@ -97,7 +99,7 @@ class MarkdownDirSplitter:
     def process_images(self, content: str, source: str) -> List[Document]:
         """处理Markdown中的base64图片"""
         image_docs = []
-        pattern = r"data:image(.*?);base64,(.*?)\)"  # 正则匹配base64图片
+        pattern = r"data:image/(.*?);base64,(.*?)\)"  # 正则匹配base64图片
 
         def replace_image(match):
             img_type = match.group(1).split(";")[0]
@@ -106,7 +108,7 @@ class MarkdownDirSplitter:
             # 生成唯一文件名
             hash_key = hashlib.md5(base64_data.encode()).hexdigest()
             filename = (
-                f"{hash_key}:{img_type if img_type in ['png','jpg','jpeg'] else 'png'}"
+                f"{hash_key}.{img_type if img_type in ['png','jpg','jpeg'] else 'png'}"
             )
             img_path = os.path.join(self.images_output_dir, filename)
 
@@ -142,7 +144,7 @@ class MarkdownDirSplitter:
 
         for doc in split_documents:
             # 处理图片
-            if "![data:image/png;base64]" in doc.page_content:
+            if "![](data:image/png;base64" in doc.page_content:
                 image_docs: List[Document] = self.process_images(doc.page_content, md_file)
                 cleaned_content = remove_base64_images(doc.page_content)
                 if cleaned_content.strip():
@@ -187,19 +189,22 @@ class MarkdownDirSplitter:
 
 if __name__ == "__main__":
     md_dir = (
-        "/mnt/d/ProdProject/Python/ModelTuneAi/Multimodal_RAG/output/马王堆一号汉墓 4"
+        "../output/00002FUE5L888ILVM7DO8JP1M7R"
     )
-    base_md_dir = r"/mnt/d/ProdProject/Python/ModelTuneAi/Multimodal_RAG/output"
+    base_md_dir = r"../output"
     splitter = MarkdownDirSplitter(
         images_output_dir=os.path.join(base_md_dir, "images")
     )
-    docs = splitter.process_md_dir(md_dir, source_filename="马王堆一号汉墓 4.pdf")
+    docs = splitter.process_md_dir(md_dir, source_filename="00002FUE5L888ILVM7DO8JP1M7R.pdf")
+
+    res:List[Dict] = do_save_to_milvus(docs)
 
     for i, doc in enumerate(docs):
         print(f"\n文档 # {i+1}:")
-        print(f"内容: {doc.page_content[:30]}...")
-        print(f"元数据：{doc.metadata}...")
-
-        print(f"一级标题：{doc.metadata.get('Header 1','')}")
-        print(f"二级标题：{doc.metadata.get('Header 2','')}")
-        print(f"三级标题：{doc.metadata.get('Header 3','')}")
+        print(doc)
+        # print(f"内容: {doc.page_content[:30]}...")
+        # print(f"元数据：{doc.metadata}...")
+        #
+        # print(f"一级标题：{doc.metadata.get('Header 1','')}")
+        # print(f"二级标题：{doc.metadata.get('Header 2','')}")
+        # print(f"三级标题：{doc.metadata.get('Header 3','')}")

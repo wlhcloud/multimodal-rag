@@ -8,3 +8,4 @@ pillow
 PyMuPDF
 sentence_transformers
 frontend
+dashscope

@@ -2,7 +2,7 @@ from modelscope import snapshot_download
 
 model_dir = snapshot_download(
     "Qwen/Qwen3-Embedding-0.6B",
-    cache_dir="/mnt/d/ProdProject/AI/models",
+    cache_dir="/home/gybwg/ai-project/models",
     revision="master",
 )
 # from datasets import load_dataset
