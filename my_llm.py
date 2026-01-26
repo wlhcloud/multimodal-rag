@@ -25,6 +25,12 @@ mvltiModel_llm = ChatOpenAI(# 多模态大模型
     base_url=ALIBABA_BASE_URL,
 )
 
+llm = ChatOpenAI(# 多模态大模型
+    model='qwen-vl-plus',
+    api_key=ALIBABA_API_KEY,
+    base_url=ALIBABA_BASE_URL,
+)
+
 embedding = OpenAIEmbeddings(
     api_key=ALIBABA_API_KEY,
     base_url=ALIBABA_BASE_URL,

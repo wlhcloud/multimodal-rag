@@ -9,3 +9,4 @@ PyMuPDF
 sentence_transformers
 frontend
 dashscope
+ragas
