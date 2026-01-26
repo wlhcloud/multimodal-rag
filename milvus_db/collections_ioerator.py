@@ -28,7 +28,7 @@ def create_db_collection():
     schema.add_field(field_name="image_path", datatype=DataType.VARCHAR, max_length=1000, nullable=True)
     schema.add_field(field_name="title", datatype=DataType.VARCHAR, max_length=1000, nullable=True)
     schema.add_field(field_name="sparse", datatype=DataType.SPARSE_FLOAT_VECTOR)
-    schema.add_field(field_name="dense", datatype=DataType.FLOAT_VECTOR, dim=1024)
+    schema.add_field(field_name="dense", datatype=DataType.FLOAT_VECTOR, dim=1536)
 
 
     bm25_function = Function(

@@ -201,7 +201,7 @@ if __name__ == "__main__":
 
     for i, doc in enumerate(docs):
         print(f"\n文档 # {i+1}:")
-        print(doc)
+        print(doc['text'],doc['image_path'])
         # print(f"内容: {doc.page_content[:30]}...")
         # print(f"元数据：{doc.metadata}...")
         #

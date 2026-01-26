@@ -1,11 +1,13 @@
 import os
 import time
 from http import HTTPStatus
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional,Any
 
 import dashscope
 from dashscope import MultiModalEmbeddingItemImage
 from dashscope.embeddings.multimodal_embedding import MultiModalEmbeddingItemBase, MultiModalEmbeddingItemText
+from sentence_transformers import SentenceTransformer
+from torch import Tensor
 
 from utils.env_utils import ALIBABA_API_KEY
 from utils.log_utils import log
@@ -144,6 +146,13 @@ class FixedWindowRateLimiter:
 
 limiter = FixedWindowRateLimiter(RPM_LIMIT, WINDOW_SECONDS)
 
+# 指定本地模型路径
+model_path = "/home/gybwg/ai-project/models/Alibaba-NLP/gme-Qwen2-VL-2B-Instruct"  # 请替换为你的实际路径
+
+# 方式1: 直接指定模型名并设置 cache_folder（如果模型已下载到本地，且结构符合 sentence-transformers 的预期）
+gme_st = SentenceTransformer(
+    model_path, # 或者使用本地路径 model_path
+)
 
 def image_to_base64(img: str) -> tuple[str, str]:
     """将图片转换为base4编码"""
@@ -206,8 +215,24 @@ def normalize_image(img: str) -> Tuple[str, str]:
     # 其他不支持的类型
     return "", ""
 
+def local_gme_one(input_data:List[Dict[str,Any]]) ->Tuple[
+    bool, List[float], Optional[int], Optional[float]]:
+    """
+    调用本地GME模型多模态向量
+    :param input_data:
+    :return:
+    """
+    encode_data = []
+    for data in input_data:
+        if data.__contains__('image'):
+            encode_data.append(data.get('image'))
+        elif data.__contains__('text'):
+            encode_data.append(data.get('text'))
 
-def call_dashscope_once(input_data: List[MultiModalEmbeddingItemBase]) -> Tuple[
+    embedding = gme_st.encode(encode_data,convert_to_tensor=True)
+    return True,embedding[0].tolist(),None,None
+
+def call_dashscope_once(input_data: List[Dict]) -> Tuple[
     bool, List[float], Optional[int], Optional[float]]:
     """调用达摩院多模态嵌入AFI一次
     Args:
@@ -218,9 +243,16 @@ def call_dashscope_once(input_data: List[MultiModalEmbeddingItemBase]) -> Tuple[
     # 应用速率限制
     limiter.acquire()
 
+    req_data:List[MultiModalEmbeddingItemBase] = []
+    for data in input_data:
+        if data.__contains__('image'):
+            req_data.append(MultiModalEmbeddingItemImage(data.get('image'),data.get('factor',1)))
+        elif data.__contains__('text'):
+            req_data.append(MultiModalEmbeddingItemText(data.get('text'),data.get('factor',1)))
+
     try:
         # 调用达摩院多模态嵌入API
-        response = dashscope.MultiModalEmbedding.call(model=DASHSCOPE_MODEL, input=input_data,
+        response = dashscope.MultiModalEmbedding.call(model=DASHSCOPE_MODEL, input=req_data,
                                                       api_key=ALIBABA_API_KEY)
     except Exception as e:
         print(f"调用 DashScope 异常:{e}")
@@ -239,7 +271,6 @@ def call_dashscope_once(input_data: List[MultiModalEmbeddingItemBase]) -> Tuple[
                 retry_after = float(ra)
     except Exception as e:
         pass
-        # log.exception(el
     # 获取API返回的代码和消息
     resp_code = getattr(response, "code", "")
     resp_msg = getattr(response, "message", "")
@@ -254,85 +285,36 @@ def call_dashscope_once(input_data: List[MultiModalEmbeddingItemBase]) -> Tuple[
         return False, [], status, retry_after
 
 
-def process_item_with_guard(item: Dict, mode: str, api_image: str = "") -> Dict:
+def process_item_with_guard(item: Dict) -> Dict:
     """处理单个数据项(文本或图像)，生成嵌入向量
 
     mode =‘text':文本项:把content 向量化;
-    mode=‘im~ge':图片项:问量化图片
+    mode=‘image':图片项:问量化图片
 
     Args:
         item:原始数据项
-        mode:处理模式('text'或'image')
-        api_image:当mode为'image'时使用的图像数据
     Returns:
         Dict:处理后的数据项，包含嵌入向量
     """
     # 创建原始项的副本以避免修改原数据n
     new_item = item.copy()
     raw_content = (new_item.get('text') or '').strip()
+    image_raw = (new_item.get("image_path")or '').strip()
 
-    if mode == 'text':
-        # 构建文本输入数据
-        input_data: List[MultiModalEmbeddingItemBase] = [MultiModalEmbeddingItemText(raw_content, 1.0)]
-        # 调用API获取嵌入向量
-        ok, embedding, status, retry_after = call_dashscope_once(input_data)
-        if ok:
-            new_item['dense'] = embedding  # 成功时添加嵌入向量
-        else:
-            new_item['dense'] = []  # 失败时设置为空数组
-        return new_item
-    elif mode == 'image':
-        if not api_image:
-            new_item['dense'] = []  # 无有效图像数据时设置为空数组else:
-        # 构建图像输入数据
-        input_data: List[MultiModalEmbeddingItemBase] = [MultiModalEmbeddingItemImage(api_image, 1.0)]
-        # 调用API获取图像嵌入向量
-        ok, embedding, status, retry_after = call_dashscope_once(input_data)
-        if ok:
-            new_item['dense'] = embedding  # 成功时添加嵌入向量
-        else:
-            new_item['dense'] = []  # 失败时设置为空数组
-        new_item['text'] = "图片"  # 为图像项设置统一的文本标识
-        return new_item
+    if image_raw:
+        img = normalize_image(image_raw[0])
+        input_data = [{'text':raw_content,'factor':1},{'image':img,'factor':1}]
+        log.info(f'图片：{image_raw},所对应的描述为{raw_content}')
     else:
-        # 位置模式处理
-        new_item['dense'] = []
-        return new_item
+        input_data = [{'text':raw_content,'factor':1}]
 
-def build_work_items(expanded_data: List[Dict]) -> List[Tuple[Dict, str, str]]:
-    """构建工作项列表，将数据拆分为文本项和图片项
-
-    返回(item，mode，api_image)三元组
-
-    Args:
-        expanded_data:扩展后的数据列表
-    Returns:
-        List[Tuple]:工作项列表，每个元素为(数据项，模式，API图像数据)
-    """
-    work_items: List[Tuple[Dict, str, str]] = []
-
-    for item in expanded_data:
-        content = (item.get('text') or '').strip() # 获取文本内容
-        image_raw = (item.get('image_path') or '').strip() # 获取原始图像路径
-
-        # 文本项处理
-        if content:
-            work_items.append((item,'text',''))
-
-        # 图片项处理
-        if image_raw:
-            # 规范化图片输入
-            api_img,store_img = normalize_image(image_raw)
-            if api_img:
-                # 创建图像项的副本并更新存储路径
-                pic_item = item.copy()
-                pic_item['image_path'] = store_img
-                # 添加到工作项列表
-                work_items.append((pic_item,'image',api_img))
-            else:
-                # 图片无效或者太大
-                pass
-    return  work_items
+     # 调用API获取图像嵌入向量
+    ok, embedding, status, retry_after = call_dashscope_once(input_data)
+    if ok:
+         new_item['dense'] = embedding  # 成功时添加嵌入向量
+    else:
+        new_item['dense'] = []  # 失败时设置为空数组
+    return new_item
 
 if __name__ == '__main__':
     pass

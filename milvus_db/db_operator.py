@@ -10,7 +10,7 @@ from my_llm import mvltiModel_llm
 
 from milvus_db.collections_ioerator import COLLECTION_NAME, client
 from utils.common_utils import get_surrounding_text_content
-from utils.embeddings_utils import build_work_items, limiter, RETRY_ON_429, process_item_with_guard, MAX_429_RETRIES, \
+from utils.embeddings_utils import limiter, RETRY_ON_429, process_item_with_guard, MAX_429_RETRIES, \
     BASE_BACKOFF, image_to_base64
 from utils.log_utils import log
 import time
@@ -156,17 +156,16 @@ def do_save_to_milvus(processed_data: List[Document]):
     :param processed_data:
     :return:
     """
-    expanded = doc_to_dict(processed_data)
-    work_items = build_work_items(expanded)
+    expanded_data = generate_image_description(doc_to_dict(processed_data))
 
     processed_data: List[Dict] = []
-    for idx, (item, mode, api_img) in enumerate(work_items, start=1):
+    for idx, (item, mode, api_img) in enumerate(expanded_data, start=1):
         limiter.acquire()
 
         if RETRY_ON_429:
             attempts = 0
             while True:
-                result = process_item_with_guard(item.copy(), mode=mode, api_image=api_img)
+                result = process_item_with_guard(item.copy())
                 if result.get('dense'):
                     processed_data.append(result)
                     break
@@ -179,10 +178,10 @@ def do_save_to_milvus(processed_data: List[Document]):
                 print(f"[429重试] 第{attempts}次, sleep {backoff:.2f}s ...")
                 time.sleep(backoff)
         else:
-            result = process_item_with_guard(item.copy(), mode=mode, api_image=api_img)
+            result = process_item_with_guard(item.copy())
             processed_data.append(result)
         if idx % 20 == 0:
-            print(f"[进度] 已处理 {idx}/{len(work_items)}")
+            print(f"[进度] 已处理 {idx}/{len(expanded_data)}")
 
     write_to_milvus(processed_data)
     return processed_data

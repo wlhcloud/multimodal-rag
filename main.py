@@ -1,6 +1,12 @@
 import os
+from typing import List,Dict
+
 import gradio as gr
+from langchain_core.documents import Document
+
 from dots_ocr.parser import do_parse
+from milvus_db.db_operator import do_save_to_milvus
+from splitters.splitter_md import MarkdownDirSplitter
 from utils.common_utils import (
     delete_directory_if_non_empty,
     get_filename,
@@ -22,6 +28,7 @@ class ProcessorAPP:
         self.md_files = None
         self.md_dir = None
         self.file_contents = None
+        self.splitter = None
 
     def upload_pdf(self, pdf_file):
         """处理PDF文件上传"""
@@ -106,6 +113,24 @@ class ProcessorAPP:
         else:
             return "文件内容加载失败，选择文件不对!"
 
+    def save_to_knowledge(self):
+        """存入知识库"""
+        if not self.md_dir:
+            return '请先解析PDF文件'
+
+        self.splitter = MarkdownDirSplitter(
+            images_output_dir=os.path.join(base_md_dir, "images")
+        )
+
+        result:list[Document] = self.splitter.process_md_dir(self.md_dir,self.pdf_path)
+
+        res: List[Dict] = do_save_to_milvus(result)
+
+        for i, doc in enumerate(res):
+            print(f"\n文档 # {i + 1}:")
+            print(doc['text'], doc['image_path'])
+        return  f'成功存入 {len(res)}个文档到Milvus'
+
     def create_interface(self):
         """
         创建一个构建多模态的知识库的界面
@@ -139,6 +164,8 @@ class ProcessorAPP:
             file_dropdown.change(
                 fn=self.select_md_file, inputs=file_dropdown, outputs=content
             )
+
+            save_btn.click(fn=self.save_to_knowledge,inputs=[],outputs=status)
         return app
 
 

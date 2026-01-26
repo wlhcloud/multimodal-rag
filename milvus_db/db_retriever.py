@@ -1,8 +1,6 @@
 import os.path
 from typing import List,Dict,Any
 
-from dashscope import MultiModalEmbeddingItemImage
-from dashscope.embeddings.multimodal_embedding import MultiModalEmbeddingItemBase, MultiModalEmbeddingItemText
 from pymilvus import MilvusClient, AnnSearchRequest, WeightedRanker
 
 from milvus_db.collections_ioerator import COLLECTION_NAME, client
@@ -90,12 +88,13 @@ class MilvusRetriever:
         """
         if os.path.isfile(query):
             # 构建图像输入数据
-            input_data: List[MultiModalEmbeddingItemBase] = [MultiModalEmbeddingItemImage(image_to_base64(query)[0], 1.0)]
+            input_data = [{'image': image_to_base64(query)[0], 'factor': 1}]
+
             # 调用API获取图像嵌入向量
             ok,embedding,status,retry_after = call_dashscope_once(input_data)
         else:
             # 构建文本输入数据
-            input_data: List[MultiModalEmbeddingItemBase] = [MultiModalEmbeddingItemText(query, 1.0)]
+            input_data = [{'text': query, 'factor': 1}]
             ok,embedding,status,retry_after = call_dashscope_once(input_data)
 
         results = []
@@ -119,7 +118,7 @@ class MilvusRetriever:
 
 if __name__ == '__main__':
     m_re = MilvusRetriever(collection_name=COLLECTION_NAME,milvus_client=client)
-    docs = m_re.retrieve("琉璃珠")
+    docs = m_re.retrieve("../output/images/06deb205fbda705dfc5a1d96fae0cdae.png")
     for doc in docs:
         print(doc)
 
