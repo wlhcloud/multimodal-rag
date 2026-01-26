@@ -4,7 +4,7 @@ from typing import List,Dict,Any
 from pymilvus import MilvusClient, AnnSearchRequest, WeightedRanker
 
 from milvus_db.collections_ioerator import COLLECTION_NAME, client
-from utils.embeddings_utils import image_to_base64, call_dashscope_once
+from utils.embeddings_utils import image_to_base64, call_dashscope_once, local_gme_one
 
 
 class MilvusRetriever:
@@ -91,11 +91,11 @@ class MilvusRetriever:
             input_data = [{'image': image_to_base64(query)[0], 'factor': 1}]
 
             # 调用API获取图像嵌入向量
-            ok,embedding,status,retry_after = call_dashscope_once(input_data)
+            ok, embedding, _, _ = local_gme_one(input_data)
         else:
             # 构建文本输入数据
             input_data = [{'text': query, 'factor': 1}]
-            ok,embedding,status,retry_after = call_dashscope_once(input_data)
+            ok, embedding, _, _ = local_gme_one(input_data)
 
         results = []
         if ok:

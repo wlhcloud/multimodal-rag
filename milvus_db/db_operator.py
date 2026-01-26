@@ -94,7 +94,7 @@ def generate_image_description(data_list):
     :param data_list: 包含字典的列表
     :return: 完整结果新列表
     """
-    results = []
+
 
     for index, item in enumerate(data_list):
         if item.get('image_path'):
@@ -143,7 +143,7 @@ def generate_image_description(data_list):
                 ]
             )
             # 调用模型生成描述
-            response = mvltiModel_llm.invork([message])
+            response = mvltiModel_llm.invoke([message])
             item['text'] = response.content
     return data_list
 
@@ -159,7 +159,7 @@ def do_save_to_milvus(processed_data: List[Document]):
     expanded_data = generate_image_description(doc_to_dict(processed_data))
 
     processed_data: List[Dict] = []
-    for idx, (item, mode, api_img) in enumerate(expanded_data, start=1):
+    for idx, item in enumerate(expanded_data, start=1):
         limiter.acquire()
 
         if RETRY_ON_429:

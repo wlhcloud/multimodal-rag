@@ -7,7 +7,6 @@ import dashscope
 from dashscope import MultiModalEmbeddingItemImage
 from dashscope.embeddings.multimodal_embedding import MultiModalEmbeddingItemBase, MultiModalEmbeddingItemText
 from sentence_transformers import SentenceTransformer
-from torch import Tensor
 
 from utils.env_utils import ALIBABA_API_KEY
 from utils.log_utils import log
@@ -296,20 +295,20 @@ def process_item_with_guard(item: Dict) -> Dict:
     Returns:
         Dict:处理后的数据项，包含嵌入向量
     """
-    # 创建原始项的副本以避免修改原数据n
+    # 创建原始项的副本以避免修改原数据
     new_item = item.copy()
     raw_content = (new_item.get('text') or '').strip()
     image_raw = (new_item.get("image_path")or '').strip()
 
     if image_raw:
-        img = normalize_image(image_raw[0])
+        img = normalize_image(image_raw)[0]
         input_data = [{'text':raw_content,'factor':1},{'image':img,'factor':1}]
         log.info(f'图片：{image_raw},所对应的描述为{raw_content}')
     else:
         input_data = [{'text':raw_content,'factor':1}]
 
-     # 调用API获取图像嵌入向量
-    ok, embedding, status, retry_after = call_dashscope_once(input_data)
+     # 调用本地模型获取图像嵌入向量
+    ok, embedding, status, retry_after = local_gme_one(input_data)
     if ok:
          new_item['dense'] = embedding  # 成功时添加嵌入向量
     else:
