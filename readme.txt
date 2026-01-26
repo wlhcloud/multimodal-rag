@@ -1,0 +1,10 @@
+langchain
+langchain-openai
+langchain-experimental
+pymilvus==2.6.0
+gradio
+loguru
+pillow
+PyMuPDF
+sentence_transformers
+frontend
