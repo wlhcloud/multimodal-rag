@@ -2,3 +2,5 @@
 output/
 logs/
 .env
+__pycache__
+.idea
