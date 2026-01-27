@@ -2,6 +2,7 @@ import os
 from typing import List, Dict
 
 from dots_ocr.parser import do_parse
+from utils.common_utils import get_filename
 from utils.env_utils import DOTS_OCR_PORT, DOTS_OCR_IP
 from PIL import Image
 import json
@@ -44,15 +45,13 @@ def _convert_parse(results: List[Dict]):
 
             # Read the layout image
             if "layout_image_path" in result and os.path.exists(
-                    result["layout_image_path"]
+                result["layout_image_path"]
             ):
-                page_result["layout_image"] = Image.open(
-                    result["layout_image_path"]
-                )
+                page_result["layout_image"] = Image.open(result["layout_image_path"])
 
             # Read the JSON data
             if "layout_info_path" in result and os.path.exists(
-                    result["layout_info_path"]
+                result["layout_info_path"]
             ):
                 with open(result["layout_info_path"], "r", encoding="utf-8") as f:
                     page_result["cells_data"] = json.load(f)
@@ -60,7 +59,7 @@ def _convert_parse(results: List[Dict]):
 
             # Read the Markdown content
             if "md_content_path" in result and os.path.exists(
-                    result["md_content_path"]
+                result["md_content_path"]
             ):
                 with open(result["md_content_path"], "r", encoding="utf-8") as f:
                     page_content = f.read()
@@ -70,10 +69,6 @@ def _convert_parse(results: List[Dict]):
             parsed_results.append(page_result)
 
         combined_md = "\n\n---\n\n".join(all_md_content) if all_md_content else ""
-
-        md_output_path = "combined_document.md"
-        with open(md_output_path, "w", encoding="utf-8") as f:
-            f.write(combined_md)
         return {
             "parsed_results": parsed_results,
             "combined_md_content": combined_md,
@@ -88,11 +83,20 @@ def parse_batch_pdf(dir: str):
     """解析pdf文件，变成多个md文件"""
 
     for file in os.listdir(dir):
-        print(file)
+        if file.endswith(".pdf"):
+            filepath = os.path.join(dir, file)
+            result = parse_pdf_one(filepath)
+            conver_resp = _convert_parse(result)
+
+            os.makedirs(os.path.join(dir, 'markdown'), exist_ok=True)
+            md_output_path = os.path.join(dir, 'markdown',f"{get_filename(file,False)}.md")
+            with open(md_output_path, "w", encoding="utf-8") as f:
+                f.write(conver_resp.get("combined_md_content", ""))
 
     # result = parse_pdf_one("")
 
     # _convert_parse()
 
-if __name__ == '__main__':
-    parse_batch_pdf('/home/gybwg/ai-project/')
+
+if __name__ == "__main__":
+    parse_batch_pdf("/mnt/d/BaiduNetdiskDownload/样例pdf")
