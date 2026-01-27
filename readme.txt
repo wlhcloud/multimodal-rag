@@ -10,3 +10,5 @@ sentence_transformers
 frontend
 dashscope
 ragas
+python-docx
+mistune
