@@ -10,3 +10,4 @@ sentence_transformers
 frontend
 dashscope
 ragas
+langgraph-checkpoint-postgres

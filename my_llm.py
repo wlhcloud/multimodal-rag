@@ -20,7 +20,7 @@ class CustomQwen3Embeddings(Embeddings):
 
 
 mvltiModel_llm = ChatOpenAI(# 多模态大模型
-    model='qwen-vl-plus',
+    model='qwen3 -vl-plus',
     api_key=ALIBABA_API_KEY,
     base_url=ALIBABA_BASE_URL,
 )
