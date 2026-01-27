@@ -12,12 +12,11 @@ from utils.common_utils import (
     get_filename,
     get_sorted_md_files,
 )
+from utils.env_utils import DOTS_OCR_IP, DOTS_OCR_PORT
 from utils.log_utils import log
 
 # md存储的临时模型
 base_md_dir = r"./output"
-OCR_IP = "127.0.0.1"
-OCR_PORT = 6007
 
 
 class ProcessorAPP:
@@ -54,8 +53,8 @@ class ProcessorAPP:
             input_path=self.pdf_path,
             num_thread=32,
             no_fitz_preprocess=True,
-            ip=OCR_IP,
-            port=OCR_PORT,
+            ip=DOTS_OCR_IP,
+            port=DOTS_OCR_PORT,
         )
         if os.path.isdir(md_files_dir):
             self.md_dir = md_files_dir

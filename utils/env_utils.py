@@ -18,3 +18,8 @@ DEEPSEEK_BASE_URL = os.getenv('DEEPSEEK_BASE_URL')
 LOCAL_BASE_URL = os.getenv('LOCAL_BASE_URL')
 
 VLLM_SERVER_URL = os.getenv('VLLM_SERVER_URL')
+
+
+DOTS_OCR_IP = os.getenv('DOTS_OCR_IP')
+DOTS_OCR_PORT = os.getenv('DOTS_OCR_PORT')
+
