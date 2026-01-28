@@ -1,15 +1,15 @@
 import os
 from dotenv import load_dotenv
 
-
 load_dotenv(override=True)
 OPENAIAPI_KEY = os.getenv('OPENAI_API_KEY')
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
 ZHIPU_API_KEY = os.getenv('ZHIPU_API_KEY')
+ZHIPU_BASE_URL = os.getenv('ZHIPU_BASE_URL')
 MINIMAX_API_KEY = os.getenv('MINIMAX_API_KEY')
 ALIBABA_API_KEY = os.getenv('ALIBABA_API_KEY')
 K2_API_KEY = os.getenv('K2_API_KEY')
-K2_BASE_URL = os.getenv ('K2_BASE_URL')
+K2_BASE_URL = os.getenv('K2_BASE_URL')
 ALIBABA_BASE_URL = os.getenv('ALIBABA_BASE_URL')
 MINIMAX_BASE_URL = os.getenv('MINIMAX_BASE_URL')
 OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL')
@@ -19,7 +19,7 @@ LOCAL_BASE_URL = os.getenv('LOCAL_BASE_URL')
 
 VLLM_SERVER_URL = os.getenv('VLLM_SERVER_URL')
 
-
 DOTS_OCR_IP = os.getenv('DOTS_OCR_IP')
 DOTS_OCR_PORT = os.getenv('DOTS_OCR_PORT')
-
+LOCAL_GME_MODEL_PATH = os.getenv('LOCAL_GME_MODEL_PATH')
+LOCAL_TEXT_EMB_PATH = os.getenv('LOCAL_TEXT_EMB_PATH')

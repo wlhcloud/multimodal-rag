@@ -116,6 +116,8 @@ class MilvusRetriever:
             })
         return  docs
 
+m_re = MilvusRetriever(collection_name=COLLECTION_NAME, milvus_client=client)
+
 if __name__ == '__main__':
     m_re = MilvusRetriever(collection_name=COLLECTION_NAME,milvus_client=client)
     docs = m_re.retrieve("../output/images/06deb205fbda705dfc5a1d96fae0cdae.png")

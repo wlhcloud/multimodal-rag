@@ -8,6 +8,7 @@ from dashscope import MultiModalEmbeddingItemImage
 from dashscope.embeddings.multimodal_embedding import MultiModalEmbeddingItemBase, MultiModalEmbeddingItemText
 from sentence_transformers import SentenceTransformer
 
+from my_llm import gme_st
 from utils.env_utils import ALIBABA_API_KEY
 from utils.log_utils import log
 
@@ -144,14 +145,6 @@ class FixedWindowRateLimiter:
 
 
 limiter = FixedWindowRateLimiter(RPM_LIMIT, WINDOW_SECONDS)
-
-# 指定本地模型路径
-model_path = "/home/gybwg/ai-project/models/Alibaba-NLP/gme-Qwen2-VL-2B-Instruct"  # 请替换为你的实际路径
-
-# 方式1: 直接指定模型名并设置 cache_folder（如果模型已下载到本地，且结构符合 sentence-transformers 的预期）
-gme_st = SentenceTransformer(
-    model_path, # 或者使用本地路径 model_path
-)
 
 def image_to_base64(img: str) -> tuple[str, str]:
     """将图片转换为base4编码"""

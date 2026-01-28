@@ -1,9 +1,8 @@
 import os
 from pathlib import Path
 import re
-import shutil
 from typing import List
-
+from utils.log_utils import log
 
 def get_filename(file_path, with_extension=True):
     """
@@ -123,3 +122,12 @@ def get_surrounding_text_content(data_list, index):
             break  # 找到第一个有效文本，停止向后遍历
 
     return prev_text, next_text
+
+def draw_graph(graph, file_name: str):
+    try:
+        mermaid_code = graph.get_graph().draw_mermaid_png()
+        with open(file_name, "wb") as f:
+            f.write(mermaid_code)
+
+    except Exception as e:
+        log.exception(e)

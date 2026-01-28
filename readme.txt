@@ -13,3 +13,5 @@ ragas
 python-docx
 mistune
 langgraph-checkpoint-postgres
+"psycopg[binary,pool]"
+zai-sdk

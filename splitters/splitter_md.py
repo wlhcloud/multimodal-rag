@@ -7,7 +7,7 @@ from PIL import Image
 from langchain_text_splitters import MarkdownHeaderTextSplitter
 
 from milvus_db.db_operator import do_save_to_milvus
-from my_llm import CustomQwen3Embeddings
+from my_llm import CustomQwen3Embeddings, text_emb
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_core.documents import Document
 from typing import List,Dict
@@ -81,7 +81,6 @@ class MarkdownDirSplitter:
         """
         self.images_output_dir = images_output_dir
         self.text_chunk_size = text_chunk_size
-        self.embedding_path = "/home/gybwg/ai-project/models/Qwen/Qwen3-Embedding-0___6B"
 
         self.headers_to_split_on = [
             ("#", "Header 1"),
@@ -91,7 +90,7 @@ class MarkdownDirSplitter:
         self.text_splitter = MarkdownHeaderTextSplitter(self.headers_to_split_on)
 
         # 语义切分器
-        self.embedding = CustomQwen3Embeddings(self.embedding_path)
+        self.embedding = text_emb
         self.semantic_splitter = SemanticChunker(
             self.embedding, breakpoint_threshold_type="percentile"
         )
@@ -201,8 +200,8 @@ if __name__ == "__main__":
 
     for i, doc in enumerate(docs):
         print(f"\n文档 # {i+1}:")
-        print(doc['text'],doc['image_path'])
-        # print(f"内容: {doc.page_content[:30]}...")
+        # print(doc['text'],doc['image_path'])
+        print(f"内容: {doc.page_content[:30]}...")
         # print(f"元数据：{doc.metadata}...")
         #
         # print(f"一级标题：{doc.metadata.get('Header 1','')}")

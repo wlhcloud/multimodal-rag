@@ -6,7 +6,7 @@ from typing import List, Dict
 
 from langchain_core.messages import HumanMessage
 from pymilvus import MilvusException
-from my_llm import mvltiModel_llm
+from my_llm import multiModal_llm
 
 from milvus_db.collections_ioerator import COLLECTION_NAME, client
 from utils.common_utils import get_surrounding_text_content
@@ -143,7 +143,7 @@ def generate_image_description(data_list):
                 ]
             )
             # 调用模型生成描述
-            response = mvltiModel_llm.invoke([message])
+            response = multiModal_llm.invoke([message])
             item['text'] = response.content
     return data_list
 
@@ -171,7 +171,7 @@ def do_save_to_milvus(processed_data: List[Document]):
                     break
                 attempts += 1
                 if attempts > MAX_429_RETRIES:
-                    print(f'[429重试] 超过最大重试次数，跳过idx={idx}，mode={mode}')
+                    print(f'[429重试] 超过最大重试次数，跳过idx={idx}')
                     processed_data.append(result)
                     break
                 backoff = BASE_BACKOFF * (2 ** (attempts - 1)) * (0.8 + random.random() * 0.4)

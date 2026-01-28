@@ -7,10 +7,10 @@ from ragas.metrics._context_precision import LLMContextPrecisionWithReference, L
 
 from milvus_db.collections_ioerator import COLLECTION_NAME, client
 from milvus_db.db_retriever import MilvusRetriever
-from my_llm import llm, embedding
+from my_llm import llm, text_emb
 
 
-class RAGRetriever:
+class RAGEvaluator:
     """
     RAG评估
     """
@@ -69,16 +69,17 @@ class RAGRetriever:
         # 执行评估指标，得到结果
         score = await context_precision.single_turn_ascore(sample)
         print(f"上下文精度评分: {score:.3f}")
+        return score
 
 
 async def main():
     evaluator_llm = LangchainLLMWrapper(llm)
-    evaluator_embedding = LangchainEmbeddingsWrapper(embedding)
+    evaluator_embedding = LangchainEmbeddingsWrapper(text_emb)
 
     # 创建评估器
-    rag_evaluator = RAGRetriever(evaluator_llm=evaluator_llm, evaluator_embedding=evaluator_embedding)
+    rag_evaluator = RAGEvaluator(evaluator_llm=evaluator_llm, evaluator_embedding=evaluator_embedding)
 
-    question = ""
+    question = "琉璃珠是谁提供的？"
     # 检索上下文（从Milvus数据库中获取）
     m_re = MilvusRetriever(COLLECTION_NAME, client)
     contexts = m_re.retrieve(question)

@@ -3,7 +3,7 @@ from typing import Optional,Dict,Literal,List
 from langgraph.graph import MessagesState
 
 
-class MultiModelRAGState(MessagesState):
+class MultiModalRAGState(MessagesState):
     """
     状态数据结构
     """
@@ -14,6 +14,7 @@ class MultiModelRAGState(MessagesState):
     needs_retrieval: Optional[bool] # 是否需要检索
     evaluate_source: Optional[float] # 评估分数
     final_response: Optional[str] # 最终回答
+    human_answer: Optional[str] # 人工处理的内容
 
     input_image: Optional[str] # 用户输入的图片，里面是base64编码的图片
     input_text: Optional[str] # 用户输入的文本
