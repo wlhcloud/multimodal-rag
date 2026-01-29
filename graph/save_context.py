@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pymilvus import MilvusClient
 
 from milvus_db.collections_ioerator import client
+from utils.embeddings_utils import local_gme_one
 from  utils.log_utils import log
 from my_llm import  gme_st
 from  typing import Dict,Any
@@ -22,8 +23,8 @@ class OptimizedMilvusAsyncWriter:
         """异步生成稠密向量"""
         try:
             # 稠密向量生成（使用OpenAI或本地模型）
-            dense_vector = gme_st.encode(text)
-            return dense_vector
+            ok, embedding, _, _  = local_gme_one([{'text': text, 'factor': 1}])
+            return embedding
         except Exception as e:
             log.exception(f'向量生成失败：{e}')
             return None

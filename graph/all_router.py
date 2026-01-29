@@ -1,15 +1,17 @@
 from graph.my_state import MultiModalRAGState
 from langgraph.graph.state import END
 
-def route_only_image(state:MultiModalRAGState):
+
+def route_only_image(state: MultiModalRAGState):
     """
     动态路由函数：用户输入是否只有图片类型
     :param state:
     :return:
     """
-    if state.get('input_type') =='only_image':
-        return  'retriever_node'
+    if state.get('input_type') == 'only_image':
+        return 'retriever_node'
     return 'first_chatbot'
+
 
 def route_llm_or_retriever(state: MultiModalRAGState):
     """
@@ -24,6 +26,16 @@ def route_llm_or_retriever(state: MultiModalRAGState):
     return 'second_chatbot'
 
 
+def route_retriever_evaluate(state: MultiModalRAGState):
+    """
+     动态路由函数，RAG是否搜索到相关文档
+     """
+    if docs := state.get("context_retrieved", []):
+        return 'third_chatbot'
+    else:
+        return "fourth_chatbot"
+
+
 def route_evaluate_node(state: MultiModalRAGState):
     """
     动态路由函数：如果用户仅仅输入图片，则不进行评估，（目前RAGAS还不支持多模态评估），其他情况下进入评估节点
@@ -32,15 +44,17 @@ def route_evaluate_node(state: MultiModalRAGState):
         return END
     return 'evaluate_node'
 
-def route_human_node(state:MultiModalRAGState):
+
+def route_human_node(state: MultiModalRAGState):
     """
     动态路由参数，如果评估后的分值低于0.6，则进入人工介入节点
     :param state:
     :return:
     """
-    if state.get('evaluate_source') >=0.8:
+    if state.get('evaluate_source') >= 0.8:
         return END
     return 'human_approval'
+
 
 def route_human_approval_node(state: MultiModalRAGState):
     """
@@ -48,6 +62,6 @@ def route_human_approval_node(state: MultiModalRAGState):
     :param state:
     :return:
     """
-    if state.get('human_answer') =='approve':
+    if state.get('human_answer') == 'approve':
         return END
     return 'fourth_chatbot'

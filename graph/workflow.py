@@ -9,14 +9,14 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.checkpoint.postgres import PostgresSaver
-from ragas.messages import AIMessage
+from langchain_core.messages import AIMessage
 
 from graph.all_router import route_evaluate_node, route_human_node, route_human_approval_node, route_only_image, \
-    route_llm_or_retriever
+    route_llm_or_retriever, route_retriever_evaluate
 from graph.evaluate_node import evaluate_answer
 from graph.save_context import get_milvus_writer
 from graph.search_node import SearchContextToolNode, retriever_node
-from graph.tools import search_context, my_search
+from graph.tools import search_context, network_search
 from my_llm import multiModal_llm
 from utils.common_utils import draw_graph
 from utils.embeddings_utils import image_to_base64
@@ -26,7 +26,7 @@ from langgraph.graph.state import END, START
 
 # 上下文检索工具列表
 tools = [search_context]
-web_tools = [my_search]
+web_tools = [network_search]
 
 
 # 工作流节点函数
@@ -80,7 +80,7 @@ def first_chatbot(state: MultiModalRAGState):
     )
 
     message = llm_with_tool.invoke([*state['messages'], system_message])
-    return {'messages':[message]}
+    return {'messages': [message]}
 
 
 def second_chatbot(state: MultiModalRAGState):
@@ -131,7 +131,7 @@ def third_chatbot(state: MultiModalRAGState):
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_prompt),
         ("user", user_content)
-        ]
+    ]
     )
     chain = prompt | multiModal_llm
 
@@ -150,13 +150,13 @@ def fourth_chatbot(state: MultiModalRAGState):
     input_text = state.get('input_text')
 
     system_message = SystemMessage(
-        content='你是一个智能体助手，一定要优先调用互联网搜索工具，请根据用户输入和互联网搜索结果，给出合理的回答。')
+        content='你是一个智能体助手，请根据用户输入和互联网搜索结果，给出合理的回答。')
     message = HumanMessage(
         content=[
             {'type': 'text', 'text': input_text}
         ]
     )
-    return {'message': [llm_tools.invoke([system_message, message])]}
+    return {'messages': [llm_tools.invoke([system_message, state.get('messages')[-1], message])]}
 
 
 # 创建图
@@ -185,17 +185,24 @@ builder.add_conditional_edges("process_input", route_only_image, {
 
 builder.add_conditional_edges("first_chatbot", tools_condition, {
     "tools": "search_context",
-    END:END
+    END: END
 })
 builder.add_conditional_edges("search_context", route_llm_or_retriever, {
     "retriever_node": "retriever_node",
     "second_chatbot": "second_chatbot"
 })
-builder.add_edge("retriever_node", "third_chatbot")
+
+# builder.add_conditional_edges("retriever_node", route_retriever_evaluate, {
+#     "third_chatbot": "third_chatbot",
+#     "fourth_chatbot": "fourth_chatbot"
+# })
+builder.add_edge('retriever_node', 'third_chatbot')  # 所有的结果都需要进行评估
+
+# builder.add_edge('second_chatbot','evaluate_node') # 所有的结果都需要进行评估
 
 builder.add_conditional_edges("third_chatbot", route_evaluate_node, {
     "evaluate_node": "evaluate_node",
-    END:END
+    END: END
 })
 builder.add_conditional_edges("evaluate_node", route_human_node, {
     "human_approval": "human_approval",
@@ -203,7 +210,7 @@ builder.add_conditional_edges("evaluate_node", route_human_node, {
 })
 builder.add_conditional_edges("human_approval", route_human_approval_node, {
     "fourth_chatbot": "fourth_chatbot",
-    END:END
+    END: END
 })
 builder.add_conditional_edges("fourth_chatbot", tools_condition, {'tools': 'web_search_node', END: END})
 builder.add_edge('web_search_node', 'fourth_chatbot')
@@ -245,23 +252,23 @@ def update_state(user_answer, config):
         values={"human_answer": new_message}
     )
 
-def pretty_print_messages(chunk,last_message):
-    chunk["messages"][-1].pretty_print()
 
+def pretty_print_messages(chunk, last_message):
+    chunk["messages"][-1].pretty_print()
 
 
 async def execute_graph(user_input: str) -> str:
     """执行工作流的函数"""
     result = ""  # AI助手的最后一条消息
     current_state = graph.get_state(config)
+    log.info(f"【初始状态】current_state.next: {current_state.next}")
+    log.info(f"【初始状态】current_state.values: {current_state.values.keys()}")
     if current_state.next:  # 出现了工作流中断
         # 通过提供关于请求的更改/改变主意的指示来满足图的继续执行
         update_state(user_input, config)
         # 恢复工作流
         async for chunk in graph.astream(None, config, stream_mode="values"):
             pretty_print_messages(chunk, last_message=True)
-
-        return result
 
     else:
         image_base64 = None
@@ -294,34 +301,43 @@ async def execute_graph(user_input: str) -> str:
             pretty_print_messages(chunk, last_message=True)
 
     current_state = graph.get_state(config)
+    log.info(f"【执行后状态】current_state.next: {current_state.next}")
+    log.info(f"【执行后状态】是否中断: {bool(current_state.next)}")
     if current_state.next:  # 出现了工作流的中断
         output = ('由于系统自我评估后，发现AI的回复不是非常准确，您是否 认可以下输出？\n'
                   '如果认可,请输入：approve ，否则请输入 rejected ,系统将会重新生成回复 ！')
         result = output
-
+        log.warning(f"【分支走向】进入人工审批分支，next={current_state.next}")
     else:
         # 异步写入到AI响应到Milvus(使用缓冲区优化）
+        log.info(f"【分支走向】进入Milvus写入分支！")
         mess = current_state.values.get('messages', [])
+        log.info(f"【消息列表】messages长度: {len(mess)}，最后一条类型: {type(mess[-1]) if mess else '空'}")
+
         if mess:
             if isinstance(mess[-1], AIMessage):
                 log.info(f'开始写入Milvus：')
                 task = asyncio.create_task(
-                    get_milvus_writer().async_insert(context_text=mess[-1].context,
-                                                     user=current_state.values.get('user', "admin"),
-                                                     message_type="AIMessage"
-                                                     )
+                    get_milvus_writer().async_insert(
+                        context_text=mess[-1].content,
+                        user=current_state.values.get('user', "admin"),
+                        message_type="AIMessage"
+                    )
                 )
-    return  result
+                await task
+    return result
+
 
 async def main():
     # 执行工作流
     while True:
         user_input = input('用户输入（文本和图片用&隔开）')
-        if user_input.lower() in ['exit','quit','退出']:
+        if user_input.lower() in ['exit', 'quit', '退出']:
             break
         res = await execute_graph(user_input)
         if res:
-            print('AI：',res)
+            print('AI：', res)
 
-if __name__ =='__main__':
+
+if __name__ == '__main__':
     asyncio.run(main())
