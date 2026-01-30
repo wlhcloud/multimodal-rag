@@ -130,7 +130,7 @@ class ProcessorAPP:
             print(doc['text'], doc['image_path'])
         return  f'成功存入 {len(res)}个文档到Milvus'
 
-    def create_interface(self):
+    def  create_interface(self):
         """
         创建一个构建多模态的知识库的界面
         """

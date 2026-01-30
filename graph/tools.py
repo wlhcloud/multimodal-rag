@@ -5,10 +5,11 @@ from milvus_db.collections_ioerator import CONTEXT_COLLECTION_NAME, client
 from my_llm import zhipu_client
 from utils.embeddings_utils import local_gme_one
 from utils.log_utils import log
+from evaluate.evaluate_self import rag_evaluator
 
 
 @tool('search_context', parse_docstring=True)
-def search_context(query: str, user_name: str = None) -> str:
+async def search_context(query: str, user_name: str = None) -> str:
     """根据用户的输入，检索与查询相关的长期历史上下文信息，然后给出正确的回答
 
     Args:
@@ -36,9 +37,6 @@ def search_context(query: str, user_name: str = None) -> str:
         [query], "context_sparse", sparse_search_params, limit=3, expr=filter_expr
     )
 
-    # 由于稀疏向量检索：距离是没有归一化处理的所以 distance 无法标准化的评估
-    # 不需要混合检索，只使用语义检索
-
     # 重排算法
     rerank = WeightedRanker(1.0, 1.0)
     res = client.hybrid_search(
@@ -50,6 +48,7 @@ def search_context(query: str, user_name: str = None) -> str:
     )[0]
 
     # 应用层过滤：只保留分数 >=min_score(0.55)的结果
+    # 由于稀疏向量检索：距离是没有归一化处理的所以 distance 无法标准化的评估
     filtered_result = [item for item in res if item.distance >= 0.75]
     log.info(f'上下文中检索：{filtered_result}')
     # 处理结果
@@ -57,6 +56,12 @@ def search_context(query: str, user_name: str = None) -> str:
     for hit in filtered_result:
         context_pieces.append(f"{hit.get('context_text')}")
 
+    # 调用上下文相关性评估指标
+    score = await rag_evaluator.evaluate_context(query,context_pieces)
+    log.info(f"上下文检索后，评估分数为:{score}")
+    if score <1.0:
+        # 分数太低不予采纳
+        context_pieces = []
     return "\n".join(context_pieces) if context_pieces else "没有找到相关的历史上下文信息"
 
 

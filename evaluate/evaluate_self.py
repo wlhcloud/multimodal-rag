@@ -4,6 +4,7 @@ from ragas import SingleTurnSample
 from ragas.embeddings.base import LangchainEmbeddingsWrapper
 from ragas.llms.base import LangchainLLMWrapper
 from ragas.metrics._context_precision import LLMContextPrecisionWithReference, LLMContextPrecisionWithoutReference
+from ragas.metrics.collections import ContextRelevance
 
 from milvus_db.collections_ioerator import COLLECTION_NAME, client
 from milvus_db.db_retriever import MilvusRetriever
@@ -71,6 +72,23 @@ class RAGEvaluator:
         print(f"上下文精度评分: {score:.3f}")
         return score
 
+    async def evaluate_context(self, question: str, contexts: List[str])->float:
+        """上下文相关性评估：检索到的上下文（快或段落）是否与用户输入相关"""
+        # 0 -> 完全不相关； 1->部分相关；2->完全相关
+        sample = SingleTurnSample(
+            user_input=question,
+            retrieved_contexts=contexts
+        )
+        scorer= ContextRelevance(llm=self.evaluator_llm)
+        metric_result = await scorer.ascore(question,contexts)
+        return metric_result.value
+
+
+evaluator_llm = LangchainLLMWrapper(llm)
+evaluator_embedding = LangchainEmbeddingsWrapper(text_emb)
+
+# 创建评估器
+rag_evaluator = RAGEvaluator(evaluator_llm=evaluator_llm, evaluator_embedding=evaluator_embedding)
 
 async def main():
     evaluator_llm = LangchainLLMWrapper(llm)
